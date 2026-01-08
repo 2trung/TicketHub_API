@@ -30,6 +30,10 @@ public class User implements UserDetails {
     String email;
     String paymentId;
     String profilePictureUrl;
+    Boolean isActive;
+    String resetPasswordKey;
+    Long resetPasswordExpiryTime;
+    Long lastLoginTime;
 
     @CreationTimestamp
     Long createdAt;
@@ -38,7 +42,7 @@ public class User implements UserDetails {
     Long updatedAt;
 
     @ManyToMany
-    Set<Role> roles;
+    private Set<Role> roles;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
