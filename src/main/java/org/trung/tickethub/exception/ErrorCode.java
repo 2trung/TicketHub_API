@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatusCode;
 public enum ErrorCode {
     INTERNAL_SERVER_ERROR(5000, "Internal server error", HttpStatus.INTERNAL_SERVER_ERROR),
 
-    INVALID_KEY(1001, "Invalid API key", HttpStatus.BAD_REQUEST),
+    INVALID_ARGUMENT(1001, "Invalid argument", HttpStatus.BAD_REQUEST),
 
     INVALID_PHONE_NUMBER(1002, "Invalid phone number", HttpStatus.BAD_REQUEST),
 

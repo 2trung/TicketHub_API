@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.stereotype.Component;
 import org.springframework.security.core.context.SecurityContextHolder;
 
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.trung.tickethub.service.JwtService;
 
@@ -34,16 +35,20 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final HandlerExceptionResolver handlerExceptionResolver;
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
-        final String requestURI = request.getRequestURI();
+        final String servletPath = request.getServletPath();
+
+        // Check if the servlet path matches any whitelisted path
         for (String path : WHITE_LIST_PATHS) {
-            if (requestURI.startsWith(path)) {
+            if (pathMatcher.match(path, servletPath)) {
                 filterChain.doFilter(request, response);
                 return;
             }
         }
+
         final String authorization = request.getHeader(AUTHORIZATION);
 
         if (StringUtils.isBlank(authorization) || !authorization.startsWith("Bearer ")) {

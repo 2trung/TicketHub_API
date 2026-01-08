@@ -59,7 +59,7 @@ public class JwtService {
 
     private String generateToken(Map<String, Object> claims, User user) {
         List<String> roleNames = getRoleNames(user.getRoles());
-        String id = user.getId();
+        Long id = user.getId();
         return Jwts.builder()
                 .claims(claims)
                 .claim("scope", roleNames)
@@ -72,7 +72,7 @@ public class JwtService {
     }
 
     private String generateRefreshToken(Map<String, Object> claims, User user) {
-        String id = user.getId();
+        Long id = user.getId();
         return Jwts.builder()
                 .claims(claims)
                 .subject(user.getUsername())
