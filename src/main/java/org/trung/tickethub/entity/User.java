@@ -23,6 +23,7 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue()
     private String id;
+    String fullName;
     String username;
     String password;
     String phoneNumber;

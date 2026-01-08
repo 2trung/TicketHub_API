@@ -9,11 +9,7 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserDataResponse {
-    String username;
-    String phoneNumber;
-    String gender;
-    String email;
-    String fullName;
-    String profilePictureUrl;
+public class LoginResponse {
+    TokenResponse token;
+    UserDataResponse user;
 }

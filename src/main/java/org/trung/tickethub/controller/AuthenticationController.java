@@ -21,8 +21,8 @@ public class AuthenticationController {
     }
 
     @PostMapping("/login")
-    ApiResponse<TokenResponse> login(@RequestBody @Valid UserLoginRequest request) {
-        return ApiResponse.<TokenResponse>builder().data(authenticationService.login(request)).build();
+    ApiResponse<LoginResponse> login(@RequestBody @Valid UserLoginRequest request) {
+        return ApiResponse.<LoginResponse>builder().data(authenticationService.login(request)).build();
     }
 
     @PostMapping("/refresh-token")

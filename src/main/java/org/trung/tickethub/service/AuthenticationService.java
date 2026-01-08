@@ -37,14 +37,18 @@ public class AuthenticationService {
     @Value("${security.resend-reset-email.duration}")
     int resendResetEmailDuration;
 
-    public TokenResponse login(UserLoginRequest request) {
+    public LoginResponse login(UserLoginRequest request) {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
             var user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
-            TokenResponse response = new TokenResponse();
-            response.setAccessToken(jwtService.generateToken(user));
-            response.setRefreshToken(jwtService.generateRefreshToken(user));
-            return response;
+            TokenResponse tokenResponse = new TokenResponse();
+            tokenResponse.setAccessToken(jwtService.generateToken(user));
+            tokenResponse.setRefreshToken(jwtService.generateRefreshToken(user));
+
+            LoginResponse loginResponse = new LoginResponse();
+            loginResponse.setToken(tokenResponse);
+            loginResponse.setUser(userMapper.toUserDataResponse(user));
+            return loginResponse;
         } catch (Exception e) {
             log.error("Login failed for email {}: {}", request.getEmail(), e.getMessage());
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
