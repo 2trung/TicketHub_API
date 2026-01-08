@@ -21,8 +21,8 @@ import java.util.Set;
 @Table(name = "\"user\"")
 public class User implements UserDetails {
     @Id
-    @GeneratedValue()
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
     String fullName;
     String username;
     String password;

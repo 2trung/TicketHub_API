@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.trung.tickethub.constant.PredefinedRole;
@@ -20,6 +21,8 @@ import org.trung.tickethub.mapper.UserMapper;
 import org.trung.tickethub.repository.RoleRepository;
 import org.trung.tickethub.repository.UserRepository;
 
+import java.util.HashSet;
+
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
@@ -30,6 +33,7 @@ public class AuthenticationService {
     final UserMapper userMapper;
     final RoleRepository roleRepository;
     final AuthenticationManager authenticationManager;
+    final PasswordEncoder passwordEncoder;
 
     @Value("${security.reset-password.key-duration}")
     int resetPasswordKeyDuration;
@@ -46,7 +50,7 @@ public class AuthenticationService {
             tokenResponse.setRefreshToken(jwtService.generateRefreshToken(user));
 
             LoginResponse loginResponse = new LoginResponse();
-            loginResponse.setToken(tokenResponse);
+            loginResponse.setTokens(tokenResponse);
             loginResponse.setUser(userMapper.toUserDataResponse(user));
             return loginResponse;
         } catch (Exception e) {
@@ -65,7 +69,13 @@ public class AuthenticationService {
             log.error("Critical error: Predefined USER role not found in database. Please check database initialization.");
             return new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
         });
-        user.getRoles().add(userRole);
+
+        HashSet<Role> userRoleSet = user.getRoles() != null ? new HashSet<>(user.getRoles()) : new HashSet<>();
+        userRoleSet.add(userRole);
+
+        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        user.setPassword(encodedPassword);
+        user.setRoles(userRoleSet);
         user.setIsActive(true);
         User savedUser = userRepository.save(user);
         log.info("User registered successfully with email: {}", request.getEmail());
@@ -137,7 +147,7 @@ public class AuthenticationService {
             log.warn("Password reset failed - expired token for user: {}", user.getEmail());
             throw new AppException(ErrorCode.EXPIRED_KEY);
         }
-        user.setPassword(request.getNewPassword());
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setResetPasswordKey(null);
         user.setResetPasswordExpiryTime(null);
         userRepository.save(user);
