@@ -11,8 +11,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.trung.tickethub.entity.Role;
 import org.trung.tickethub.entity.User;
-import org.trung.tickethub.exception.AppException;
 import org.trung.tickethub.constant.TokenType;
+import org.trung.tickethub.exception.AuthorizationException;
 
 
 import javax.crypto.SecretKey;
@@ -20,7 +20,6 @@ import java.security.Key;
 import java.util.*;
 import java.util.function.Function;
 
-import static org.trung.tickethub.exception.ErrorCode.INVALID_TOKEN;
 import static org.trung.tickethub.constant.TokenType.ACCESS_TOKEN;
 import static org.trung.tickethub.constant.TokenType.REFRESH_TOKEN;
 
@@ -104,7 +103,7 @@ public class JwtService {
             return Jwts.parser().verifyWith((SecretKey) getKey(type)).build().parseSignedClaims(token).getPayload();
         } catch (SignatureException e) {
             log.warn("Invalid JWT signature: {}", e.getMessage());
-            throw new AppException(INVALID_TOKEN);
+            throw new AuthorizationException("Invalid token");
         }
     }
 

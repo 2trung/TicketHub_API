@@ -5,7 +5,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.web.bind.annotation.*;
-import org.trung.tickethub.dto.ApiResponse;
+import org.trung.tickethub.dto.SuccessResponse;
 import org.trung.tickethub.dto.authentication.*;
 import org.trung.tickethub.service.AuthenticationService;
 
@@ -16,36 +16,36 @@ import org.trung.tickethub.service.AuthenticationService;
 public class AuthenticationController {
     AuthenticationService authenticationService;
     @PostMapping("/register")
-    ApiResponse<UserDataResponse> register(@RequestBody @Valid UserRegisterRequest request) {
-        return ApiResponse.<UserDataResponse>builder().data(authenticationService.register(request)).build();
+    SuccessResponse<UserDataResponse> register(@RequestBody @Valid UserRegisterRequest request) {
+        return SuccessResponse.<UserDataResponse>builder().data(authenticationService.register(request)).build();
     }
 
     @PostMapping("/login")
-    ApiResponse<LoginResponse> login(@RequestBody @Valid UserLoginRequest request) {
-        return ApiResponse.<LoginResponse>builder().data(authenticationService.login(request)).build();
+    SuccessResponse<LoginResponse> login(@RequestBody @Valid UserLoginRequest request) {
+        return SuccessResponse.<LoginResponse>builder().data(authenticationService.login(request)).build();
     }
 
     @PostMapping("/refresh-token")
-    ApiResponse<TokenResponse> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
-        return ApiResponse.<TokenResponse>builder().data(authenticationService.refreshToken(request)).build();
+    SuccessResponse<TokenResponse> refreshToken(@RequestBody @Valid RefreshTokenRequest request) {
+        return SuccessResponse.<TokenResponse>builder().data(authenticationService.refreshToken(request)).build();
     }
 
 
     @PostMapping("/resend-reset-email")
-    ApiResponse<Void> resendOtp(@RequestParam @Valid String email) {
+    SuccessResponse<Void> resendOtp(@RequestParam @Valid String email) {
         authenticationService.resendResetEmail(email);
-        return ApiResponse.<Void>builder().build();
+        return SuccessResponse.<Void>builder().build();
     }
 
     @PostMapping("/reset-password")
-    ApiResponse<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
+    SuccessResponse<Void> resetPassword(@RequestBody @Valid ResetPasswordRequest request) {
         authenticationService.resetPassword(request);
-        return ApiResponse.<Void>builder().build();
+        return SuccessResponse.<Void>builder().build();
     }
 
     @PostMapping("/forgot-password")
-    ApiResponse<Void> forgotPassword(@RequestParam @Valid String email) {
+    SuccessResponse<Void> forgotPassword(@RequestParam @Valid String email) {
         authenticationService.forgotPassword(email);
-        return ApiResponse.<Void>builder().build();
+        return SuccessResponse.<Void>builder().build();
     }
 }

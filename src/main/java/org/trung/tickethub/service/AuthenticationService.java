@@ -15,8 +15,7 @@ import org.trung.tickethub.constant.TokenType;
 import org.trung.tickethub.dto.authentication.*;
 import org.trung.tickethub.entity.Role;
 import org.trung.tickethub.entity.User;
-import org.trung.tickethub.exception.AppException;
-import org.trung.tickethub.exception.ErrorCode;
+import org.trung.tickethub.exception.*;
 import org.trung.tickethub.mapper.UserMapper;
 import org.trung.tickethub.repository.RoleRepository;
 import org.trung.tickethub.repository.UserRepository;
@@ -44,7 +43,7 @@ public class AuthenticationService {
     public LoginResponse login(UserLoginRequest request) {
         try {
             authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-            var user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+            var user = userRepository.findByEmail(request.getEmail()).orElseThrow(UserNotFoundException::new);
             TokenResponse tokenResponse = new TokenResponse();
             tokenResponse.setAccessToken(jwtService.generateToken(user));
             tokenResponse.setRefreshToken(jwtService.generateRefreshToken(user));
@@ -55,19 +54,19 @@ public class AuthenticationService {
             return loginResponse;
         } catch (Exception e) {
             log.error("Login failed for email {}: {}", request.getEmail(), e.getMessage());
-            throw new AppException(ErrorCode.INVALID_CREDENTIALS);
+            throw new AuthorizationException();
         }
     }
 
     public UserDataResponse register(UserRegisterRequest request) {
         if (Boolean.TRUE.equals(userRepository.existsByEmail(request.getEmail()))) {
             log.warn("Registration failed - email already exists: {}", request.getEmail());
-            throw new AppException(ErrorCode.USER_ALREADY_EXISTS);
+            throw new UserExistedException();
         }
         var user = userMapper.toUser(request);
         Role userRole = roleRepository.findByName(PredefinedRole.USER.toString()).orElseThrow(() -> {
             log.error("Critical error: Predefined USER role not found in database. Please check database initialization.");
-            return new AppException(ErrorCode.INTERNAL_SERVER_ERROR);
+            return new RuntimeException();
         });
 
         HashSet<Role> userRoleSet = user.getRoles() != null ? new HashSet<>(user.getRoles()) : new HashSet<>();
@@ -83,21 +82,21 @@ public class AuthenticationService {
     }
 
     public TokenResponse refreshToken(RefreshTokenRequest request) {
-        User user = userRepository.findByEmail(jwtService.extractUsername(request.getRefreshToken(), TokenType.REFRESH_TOKEN)).orElseThrow(() -> new AppException(ErrorCode.INVALID_TOKEN));
+        User user = userRepository.findByEmail(jwtService.extractUsername(request.getRefreshToken(), TokenType.REFRESH_TOKEN)).orElseThrow(UserNotFoundException::new);
         return TokenResponse.builder()
                 .accessToken(jwtService.generateToken(user))
                 .refreshToken(request.getRefreshToken()).build();
     }
 
     public void forgotPassword(String email) {
-        var user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
         if (Boolean.TRUE.equals(user.getIsActive())) {
             log.warn("Password reset requested for inactive user: {}", email);
-            throw new AppException(ErrorCode.USER_BLOCKED);
+            throw new ForbiddenException("User blocked");
         }
         if (user.getResetPasswordExpiryTime() != null && user.getResetPasswordExpiryTime() > System.currentTimeMillis()) {
             log.warn("Password reset requested but existing token is still valid for user: {}", email);
-            throw new AppException(ErrorCode.TOO_MANY_REQUESTS);
+            throw new TooManyRequestsException();
         }
 
         // todo: check rate limiting here
@@ -107,15 +106,15 @@ public class AuthenticationService {
     }
 
     public void resendResetEmail(String email) {
-        var user = userRepository.findByEmail(email).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        var user = userRepository.findByEmail(email).orElseThrow(UserNotFoundException::new);
         if (Boolean.TRUE.equals(user.getIsActive())) {
             log.warn("Resend reset email requested for inactive user: {}", email);
-            throw new AppException(ErrorCode.USER_BLOCKED);
+            throw new ForbiddenException("User blocked");
         }
 
         if (user.getResetPasswordExpiryTime() != null && (user.getResetPasswordExpiryTime() - System.currentTimeMillis()) <= (long) resendResetEmailDuration * 1000 * 60) {
             log.warn("Resend reset email requested but existing token is still valid for user: {}", email);
-            throw new AppException(ErrorCode.TOO_MANY_REQUESTS);
+            throw new TooManyRequestsException();
         }
         setNewResetPasswordKey(user);
         sendResetEmail(user);
@@ -138,14 +137,14 @@ public class AuthenticationService {
     }
 
     public void resetPassword(ResetPasswordRequest request) {
-        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByEmail(request.getEmail()).orElseThrow(UserNotFoundException::new);
         if (Boolean.FALSE.equals(user.getIsActive())) {
             log.warn("Password reset failed - inactive user: {}", request.getEmail());
-            throw new AppException(ErrorCode.USER_BLOCKED);
+            throw new ForbiddenException("User blocked");
         }
         if (user.getResetPasswordExpiryTime() == null || user.getResetPasswordExpiryTime() < System.currentTimeMillis()) {
             log.warn("Password reset failed - expired token for user: {}", user.getEmail());
-            throw new AppException(ErrorCode.EXPIRED_KEY);
+            throw new ForbiddenException("Your reset password link has expired");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setResetPasswordKey(null);

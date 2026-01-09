@@ -1,112 +1,141 @@
 package org.trung.tickethub.exception;
-
-import java.util.Map;
-
 import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.SignatureException;
-import jakarta.validation.ConstraintViolation;
 
-import jakarta.validation.ValidationException;
+import jakarta.validation.ConstraintViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
 
 import lombok.extern.slf4j.Slf4j;
-import org.trung.tickethub.dto.ApiResponse;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.trung.tickethub.dto.ErrorResponse;
+
+import java.io.IOException;
+import java.util.Date;
+import java.util.Objects;
 
 @ControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
-    @ExceptionHandler(value = Exception.class)
-    ResponseEntity<ApiResponse<Void>> handlingRuntimeException(RuntimeException exception) {
-        log.error("Exception: ", exception);
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(ErrorCode.INTERNAL_SERVER_ERROR.getMessage());
-        return ResponseEntity.badRequest().body(apiResponse);
-    }
-
-    @ExceptionHandler(value = AppException.class)
-    ResponseEntity<ApiResponse<Void>> handlingAppException(AppException exception) {
-        ErrorCode errorCode = exception.getErrorCode();
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-
-        apiResponse.setCode(errorCode.getCode());
-        apiResponse.setMessage(errorCode.getMessage());
-
-        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
-    }
-
-    @ExceptionHandler(value = MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void>> handlingValidation(MethodArgumentNotValidException exception) {
-        var fieldError = exception.getFieldError();
-        if (fieldError == null) {
-            return buildErrorResponse(ErrorCode.INVALID_ARGUMENT);
+    @ExceptionHandler({ConstraintViolationException.class,
+            MissingServletRequestParameterException.class, MethodArgumentNotValidException.class, MethodArgumentTypeMismatchException.class})
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleBadRequestException(Exception e, WebRequest request) {
+        String message = e.getMessage();
+        ErrorResponse errorResponse;
+        final String INVALID_PARAMETER = "Invalid Parameter";
+        if (e instanceof MethodArgumentNotValidException ex) {
+            var fieldError = ex.getBindingResult().getFieldError();
+            message = (fieldError != null) ? Objects.requireNonNullElse(fieldError.getDefaultMessage(), INVALID_PARAMETER) : INVALID_PARAMETER;
+            errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, INVALID_PARAMETER, message);
+        } else if (e instanceof ConstraintViolationException) {
+            message = message.substring(message.indexOf(" ") + 1);
+            errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, INVALID_PARAMETER, message);
+        } else if (e instanceof MissingServletRequestParameterException) {
+            errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, INVALID_PARAMETER, message);
+        } else if (e instanceof MethodArgumentTypeMismatchException) {
+            errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, INVALID_PARAMETER, message);
+        } else {
+            errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, INVALID_PARAMETER, message);
         }
-
-        String message = fieldError.getDefaultMessage();
-
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
-                .code(ErrorCode.INVALID_ARGUMENT.getCode())
-                .message(message)
-                .build();
-
-        return ResponseEntity.status(ErrorCode.INVALID_ARGUMENT.getStatusCode()).body(apiResponse);
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    private ResponseEntity<ApiResponse<Void>> buildErrorResponse(ErrorCode errorCode) {
-        ApiResponse<Void> apiResponse = ApiResponse.<Void>builder()
-                .code(errorCode.getCode())
-                .message(errorCode.getMessage())
-                .build();
-        return ResponseEntity.status(errorCode.getStatusCode()).body(apiResponse);
+    @ExceptionHandler(UserNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(UserNotFoundException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.NOT_FOUND, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(value = ValidationException.class)
-    ResponseEntity<ApiResponse<Void>> handlingValidation(ValidationException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setCode(ErrorCode.INVALID_ARGUMENT.getCode());
-        apiResponse.setMessage(ErrorCode.INVALID_ARGUMENT.getMessage());
-
-        return ResponseEntity.badRequest().body(apiResponse);
+    @ExceptionHandler(IOException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ResponseEntity<ErrorResponse> handleIOException(IOException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.BAD_REQUEST, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(value = SignatureException.class)
-    ResponseEntity<ApiResponse<Void>> handlingSignatureException(SignatureException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(ErrorCode.INVALID_TOKEN.getMessage());
-        return ResponseEntity.status(401).body(apiResponse);
+    @ExceptionHandler(SignatureException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleSignatureException(SignatureException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.UNAUTHORIZED, request, "Invalid Token");
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(value = ExpiredJwtException.class)
-    ResponseEntity<ApiResponse<Void>> handlingExpiredJwtException(ExpiredJwtException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(ErrorCode.EXPIRED_TOKEN.getMessage());
-        return ResponseEntity.status(401).body(apiResponse);
+    @ExceptionHandler(ExpiredJwtException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleExpiredJwtException(ExpiredJwtException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.UNAUTHORIZED, request, "Token Expired");
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler(value = HttpMessageNotReadableException.class)
-    ResponseEntity<ApiResponse<Void>> handlingHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(ErrorCode.INVALID_DATA.getMessage());
-        return ResponseEntity.badRequest().body(apiResponse);
+    @ExceptionHandler(NotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.NOT_FOUND, request, e.getMessage() == null ? "Not Found" : e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(value = MalformedJwtException.class)
-    ResponseEntity<ApiResponse<Void>> handlingMalformedJwtException(MalformedJwtException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(ErrorCode.INVALID_TOKEN.getMessage());
-
-        return ResponseEntity.status(401).body(apiResponse);
+    @ExceptionHandler(UserExistedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ResponseEntity<ErrorResponse> handleUserExistedException(UserExistedException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.CONFLICT, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(value = IllegalArgumentException.class)
-    ResponseEntity<ApiResponse<Void>> handlingIllegalArgumentException(IllegalArgumentException exception) {
-        ApiResponse<Void> apiResponse = new ApiResponse<>();
-        apiResponse.setMessage(exception.getMessage());
-        return ResponseEntity.badRequest().body(apiResponse);
+    @ExceptionHandler(AuthorizationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ResponseEntity<ErrorResponse> handleAuthorizationException(AuthorizationException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.UNAUTHORIZED, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ResponseEntity<ErrorResponse> handleForbiddenException(ForbiddenException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.FORBIDDEN, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(TooManyRequestsException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
+    public ResponseEntity<ErrorResponse> handleTooManyRequestsException(TooManyRequestsException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.TOO_MANY_REQUESTS, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(RuntimeException e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, request, e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ResponseEntity<ErrorResponse> handleGenericException(Exception e, WebRequest request) {
+        ErrorResponse errorResponse = buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, request, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), "An unexpected error occurred");
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private ErrorResponse buildErrorResponse(HttpStatus status, WebRequest request, String message) {
+        return buildErrorResponse(status, request, status.getReasonPhrase(), message);
+    }
+
+    private ErrorResponse buildErrorResponse(HttpStatus status, WebRequest request, String error, String message) {
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setPath(request.getDescription(false).replace("uri=", ""));
+        errorResponse.setStatus(status.value());
+        errorResponse.setError(error);
+        errorResponse.setMessage(message);
+        return errorResponse;
     }
 }
