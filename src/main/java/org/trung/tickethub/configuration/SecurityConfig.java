@@ -24,7 +24,12 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 public class SecurityConfig {
     private final AuthenticationProvider authenticationProvider;
     private final JwtFilter jwtFilter;
-    protected static final String[] WHITE_LIST_PATHS = {"/auth/**"};
+    protected static final String[] WHITE_LIST_PATHS = {
+            "/auth/**",
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**",
+    };
 
     @Bean
     public SecurityFilterChain configure(@NonNull HttpSecurity http) throws Exception {
