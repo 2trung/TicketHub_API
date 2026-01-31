@@ -1,0 +1,16 @@
+package org.trung.tickethub.dto.event;
+
+import lombok.*;
+import lombok.experimental.FieldDefaults;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
+public class SearchEventRequest {
+    String keyword;
+    String fromDate;
+    String toDate;
+    String location;
+}

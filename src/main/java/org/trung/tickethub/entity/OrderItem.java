@@ -19,4 +19,7 @@ public class OrderItem {
 
     @ManyToOne
     Order order;
+
+    @ManyToOne
+    Ticket ticket;
 }

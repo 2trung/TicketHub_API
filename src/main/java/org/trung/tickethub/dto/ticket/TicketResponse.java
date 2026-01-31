@@ -1,22 +1,15 @@
-package org.trung.tickethub.entity;
+package org.trung.tickethub.dto.ticket;
 
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Entity
-public class Ticket {
-    @Id
-    @GeneratedValue(strategy= GenerationType.IDENTITY)
+public class TicketResponse {
     long id;
-
     String title;
     String description;
     double price;
@@ -26,17 +19,8 @@ public class Ticket {
     int soldQuantity;
     boolean isActive;
     boolean isHidden;
-
-    @CreationTimestamp
     long createdAt;
-
-    @UpdateTimestamp
     long updatedAt;
-
-    @ManyToOne
-    Organiser organiser;
-
-    @ManyToOne
-    Event event;
-
+    Long organiserId;
+    Long eventId;
 }

@@ -5,7 +5,7 @@ import org.trung.tickethub.entity.User;
 
 import java.util.Optional;
 
-public interface UserRepository extends JpaRepository<User, String> {
+public interface UserRepository extends JpaRepository<User, Long> {
     User findByUsername(String username);
 
     Optional<User> findByEmail(String email);
